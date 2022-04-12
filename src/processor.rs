@@ -1,15 +1,17 @@
 //processor.rs -> program logic
 
 use solana_program::{
-    account_info::AccountInfo,  
+    account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg, 
+    program_error::ProgramError,
+    msg,
     pubkey::Pubkey,
     program_pack::{Pack, IsInitialized},
     sysvar::{rent::Rent, Sysvar},
+    program::invoke
 };
 
-use crate::{instruction::EscrowInstruction, error::EscrowError, state::Escrow};
+use crate::{instruction::DepositInstruction, error::DepositError, state::Deposit};
 
 pub struct Processor;
 impl Processor {
@@ -58,12 +60,36 @@ impl Processor {
         deposit_info.is_initialized = true;
         deposit_info.initializer_pubkey = *initializer.key;
         deposit_info.temp_token_account_pubkey = *temp_token_account.key;
-        deposit_info.initializer_token_to_receive_account_pubkey = *token_to_receive_account.key;
-        deposit_info.expected_amount = amount;
 
         Deposit::pack(deposit_info, &mut deposit_account.try_borrow_mut_data()?)?;
 
+        let (pda, _bump_seed) = Pubkey::find_program_address(&[b"deposit"], program_id);
+
+        let token_program = next_account_info(account_info_iter)?;
+        //confusion of token ownership transfer
+        let owner_change_ix = spl_token::instruction::set_authority(
+            token_program.key, //token program id, 
+            temp_token_account.key, //then the account whose authority we'd like to change,
+            Some(&pda), // the account that's the new authority (in our case the PDA),
+            spl_token::instruction::AuthorityType::AccountOwner, //the type of authority change (there are different authority types for token accounts, we care about changing the main authority),
+            initializer.key,        //the current account authority (Alice -> initializer.key),
+            &[&initializer.key],    //the public keys signing the CPI.
+        )?;
+        
+
+        msg!("Calling the token program to transfer token account ownership...");
+        invoke(
+            &owner_change_ix,
+            &[
+                temp_token_account.clone(),
+                initializer.clone(),
+                token_program.clone(),
+            ],
+        )?;
+        // end of confusion
+
         Ok(())
-    }
-    
+
+        //end of process_init_deposit
+    } 
 }

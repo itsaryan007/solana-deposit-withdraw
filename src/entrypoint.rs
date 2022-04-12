@@ -1,4 +1,8 @@
-// entrypoint.rs -> entrypoint to the program
+use solana_program::{
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey
+};
+
+use crate::processor::Processor;
 
 entrypoint!(process_instruction);
 fn process_instruction(
