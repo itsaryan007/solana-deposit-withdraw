@@ -25,7 +25,7 @@ impl IsInitialized for Deposit {
 impl Pack for Desposit {
     const LEN: usize = 105;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let src = array_ref![src, 0, Escrow::LEN];
+        let src = array_ref![src, 0, Deposit::LEN];
         let (
             is_initialized,
             initializer_pubkey,
