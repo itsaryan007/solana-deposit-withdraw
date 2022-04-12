@@ -22,7 +22,7 @@ impl IsInitialized for Deposit {
     }
 }
 
-impl Pack for Desposit {
+impl Pack for Deposit {
     const LEN: usize = 105;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, Deposit::LEN];
